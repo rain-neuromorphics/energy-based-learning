@@ -58,7 +58,7 @@ class Counter(Statistic):
         """Initializes an instance of Counter
 
         Args:
-            network (Network): the network where we count the number of examples processed
+            network (SumSeparableFunction): the network where we count the number of examples processed
             dataset_size (int): the number of examples in the dataset
         """
 
@@ -95,7 +95,7 @@ class ErrorFinder(Statistic):
     Attributes
     ----------
     name (str): the name of the statistic
-    _network (Network): the model to evaluate
+    _network (SumSeparableFunction): the model to evaluate
     _list_indices (list of int): list of indices of misclassified images in the dataset
     display (bool): whether or not this statistic is displayed in the summeary logs of each epoch  # FIXME
 
@@ -118,7 +118,7 @@ class ErrorFinder(Statistic):
         """Initializes an instance of ErrorFinder
 
         Args:
-            network (Network): the network used to classify the examples of the dataset
+            network (SumSeparableFunction): the network used to classify the examples of the dataset
             evaluator (Evaluator): the evaluator of the network
         """
 
@@ -235,7 +235,7 @@ class EnergyStat(MeanStat):
         """Initializes an instance of EnergyStat
 
         Args:
-            network (Network): the network whose energy function is measured at equilibrium
+            network (SumSeparableFunction): the network whose energy function is measured at equilibrium
         """
 
         self._network = network
@@ -249,7 +249,7 @@ class EnergyStat(MeanStat):
 
     def _measure_fn(self):
         """Energy function"""
-        return self._network.energy_fn()
+        return self._network.eval()
 
 
 class CostStat(MeanStat):
@@ -259,14 +259,14 @@ class CostStat(MeanStat):
 
     option = None
 
-    def __init__(self, cost_function):
+    def __init__(self, cost_fn):
         """Initializes an instance of CostStat
 
         Args:
-            cost_function (CostFunction): the cost function whose value we measure
+            cost_fn (CostFunction): the cost function whose value we measure
         """
 
-        self._cost_function = cost_function
+        self._cost_fn = cost_fn
         display_name = 'Cost'
         name = 'Cost'
         precision = 5
@@ -277,7 +277,7 @@ class CostStat(MeanStat):
 
     def _measure_fn(self):
         """Cost function"""
-        return self._cost_function.cost_fn()
+        return self._cost_fn.eval()
 
 
 class ErrorStat(MeanStat):
@@ -285,16 +285,16 @@ class ErrorStat(MeanStat):
     Class used to measure the mean error rate over the dataset.
     """
 
-    def __init__(self, cost_function):
+    def __init__(self, cost_fn):
         """Initializes an instance of ErrorStat
 
         Args:
-            cost_function (CostFunction): the cost function associated to the error rate
+            cost_fn (CostFunction): the cost function associated to the error rate
         """
 
         self.option = None
 
-        self._cost_function = cost_function
+        self._cost_fn = cost_fn
         display_name = 'Error'
         name = 'Error'
         precision = 3
@@ -305,7 +305,7 @@ class ErrorStat(MeanStat):
 
     def _measure_fn(self):
         """Error function"""
-        return self._cost_function.error_fn().type(torch.float)
+        return self._cost_fn.error_fn().type(torch.float)
 
 
 class TopFiveErrorStat(MeanStat):
@@ -313,16 +313,16 @@ class TopFiveErrorStat(MeanStat):
     Class used to measure the mean top-5 error rate over the dataset.
     """
 
-    def __init__(self, cost_function):
+    def __init__(self, cost_fn):
         """Initializes an instance of TopFiveErrorStat
 
         Args:
-            cost_function (CostFunction): the cost function associated to the top-5 error rate
+            cost_fn (CostFunction): the cost function associated to the top-5 error rate
         """
 
         self.option = None
 
-        self._cost_function = cost_function
+        self._cost_fn = cost_fn
         display_name = 'Top5Error'
         name = 'Top5Error'
         precision = 3
@@ -333,7 +333,7 @@ class TopFiveErrorStat(MeanStat):
 
     def _measure_fn(self):
         """Top-5 error function"""
-        return self._cost_function.top_five_error_fn().type(torch.float)
+        return self._cost_fn.top_five_error_fn().type(torch.float)
 
 
 class ViolationStat(MeanStat):

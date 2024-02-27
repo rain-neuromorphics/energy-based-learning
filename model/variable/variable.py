@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import copy
 
 
 
@@ -15,6 +16,10 @@ class Variable(ABC):
     -------
     init_state()
         Initializes the state of the variable
+    set_device(device)
+        Set the variable's Tensor state on a given device
+    to(device)
+        Create a copy of the variable on a given device
     """
 
     def __init__(self, shape):
@@ -25,6 +30,8 @@ class Variable(ABC):
         """
 
         self._shape = shape
+        
+        # TODO: should one initialize the variable in the Variable construcor?
 
     @property
     def shape(self):
@@ -46,10 +53,20 @@ class Variable(ABC):
         """Set the variable's Tensor state on a given device
 
         Args:
-            device (str): Either 'cpu' or 'cuda'.
+            device (str): The device, e.g. 'cpu' or 'cuda'.
         """
 
         self._state = self._state.to(device)
+    
+    def to(self, device):
+        """Create a copy of the variable on a given device
+
+        Args:
+            device (str): The device, e.g. 'cpu' or 'cuda'.
+        """
+        variable = copy.deepcopy(self)
+        variable._state = variable._state.to(device)
+        return variable
 
     @abstractmethod
     def init_state(self):

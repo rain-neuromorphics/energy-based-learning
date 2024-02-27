@@ -13,13 +13,15 @@ class Monitor:
 
     Attributes
     ----------
-    _network (Network): the network to train
+    _network (SumSeparableFunction): the network to train
     _trainer (Trainer): used to train the network on the training set
     _scheduler (lr_scheduler): used to adjust the learning rates after every training epoch
     _evaluator (Evaluator): used to evaluate the network on the test set
     _path (str): the directory where to save the model and the characteristics of the training process
     _series (list of TimeSeries): the time series of statistics that are monitored during training
     _test_error_curve (TimeSeries): the test error curve
+    _epoch (int): epoch of training (where the statistics have been recorded)
+    _writer (SummaryWriter): tensorboard summary writer to update
 
     Methods
     -------
@@ -31,19 +33,21 @@ class Monitor:
         Saves the state of the training process in the path
     """
 
-    def __init__(self, network, cost_function, trainer, scheduler, evaluator, path=None, gdd=None):
-        """Creates an instance of Optimizer
+    def __init__(self, network, cost_fn, trainer, scheduler, evaluator, path=None, use_tensorboard=True):
+        """Creates an instance of Monitor
 
         Args:
-            network (Network): the network to train
+            network (SumSeparableFunction): the network to train
+            cost_fn (CostFunction): the cost function to optimize
             trainer (Trainer): used to train the network on the training set
             evaluator (Evaluator): used to evaluate the network on the test set
             scheduler (lr_scheduler): used to adjust the learning rates after every training epoch
             path (str, optional): the directory where to save the model and the characteristics of the training process. Default: None
+            use_tensorboard (bool, optional): if True, uses a summary writer to monitor with tensorboard. Default: True
         """
 
         self._network = network
-        self._cost_function = cost_function
+        self._cost_fn = cost_fn
         self._trainer = trainer
         self._scheduler = scheduler
         self._evaluator = evaluator
@@ -56,8 +60,15 @@ class Monitor:
 
         self._build_series()
 
+        self._epoch = 0
 
-    def run(self, num_epochs, verbose=False, use_tensorboard=True):
+        self._use_tensorboard = use_tensorboard
+        if use_tensorboard: self._writer = SummaryWriter(self._path)
+
+        self._start_time = time.time()
+
+
+    def run(self, num_epochs, verbose=False):
         """Launch a run for num_epochs epochs
 
         Logs statistics about the run either after every batch or after every epoch.
@@ -65,40 +76,50 @@ class Monitor:
         Args:
             num_epochs (int): number of epochs of training
             verbose (bool, optional): if True, prints logs after every batch processed ; if False: prints logs after every epoch. Default: False
-            use_tensorboard (bool, optional): if True, uses a summary writer to monitor with tensorboard. Default: True
         """
 
-        if use_tensorboard: writer = SummaryWriter(self._path)
+        for _ in range(num_epochs): self.one_epoch(verbose=verbose)
+    
+    def one_epoch(self, verbose=False):
+        """Performs one epoch of training
 
-        start_time = time.time()
+        Logs statistics about the run either after every batch or at the end of the epoch.
 
-        for epoch in range(num_epochs):
+        Args:
+            verbose (bool, optional): if True, prints logs after every batch processed ; if False: prints logs at the end of the epoch. Default: False
+        """
 
-            print('Epoch {}'.format(epoch + 1))
+        self._epoch += 1
 
-            # Training
-            self._trainer.run(verbose)
-            self._scheduler.step()
+        print('Epoch {}'.format(self._epoch))
 
-            # Evaluation
-            self._evaluator.run(verbose)
+        # Training
+        self._trainer.run(verbose)
+        self._scheduler.step()
 
-            # Update the statistics of training and evaluation
-            for series in self._series: series.update()
-            if use_tensorboard: self._update_summary_writer(writer, epoch)
+        # Evaluation
+        self._evaluator.run(verbose)
 
-            if not verbose:  # Print the statistics of training and evaluation at every epoch
-                print(str(self._trainer))
-                print(str(self._evaluator))
-            
-            self.save_series()  # saves the training curves
-            if self._test_error_curve.is_minimum(): self.save_network()  # saves the network's parameters
+        # Update the statistics of training and evaluation
+        for series in self._series: series.update()
+        if self._use_tensorboard: self._update_summary_writer()
 
-            # Print the total duration
-            seconds = time.time() - start_time
-            minutes, seconds = seconds // 60, seconds % 60
-            hours, minutes = minutes // 60, minutes % 60
-            print('Duration = {:.0f} hours {:.0f} min {:.0f} sec \n'.format(hours, minutes, seconds))
+        if not verbose:  # Print the statistics of training and evaluation at every epoch
+            print(str(self._trainer))
+            print(str(self._evaluator))
+        
+        self.save_series()  # saves the training curves
+        if self._test_error_curve.is_minimum(): self.save_network()  # saves the network's parameters
+
+        # Print the total duration
+        seconds = time.time() - self._start_time
+        minutes, seconds = seconds // 60, seconds % 60
+        hours, minutes = minutes // 60, minutes % 60
+        print('Duration = {:.0f} hours {:.0f} min {:.0f} sec \n'.format(hours, minutes, seconds))
+    
+    def test_error(self):
+        """Returns the last value of the test error rate"""
+        return self._test_error_curve.last_value()
 
     def save_network(self):
         """Saves the network's parameters"""
@@ -139,7 +160,7 @@ class Monitor:
         """Prepares the statistics and the corresponding time series to monitor"""
 
         network = self._network
-        cost_function = self._cost_function
+        cost_fn = self._cost_fn
         train_set_size = self._trainer.dataset_size()
         test_set_size = self._evaluator.dataset_size()
 
@@ -147,9 +168,9 @@ class Monitor:
         stats_train_0 = [
         Counter(network, train_set_size),
         EnergyStat(network),
-        CostStat(cost_function),
-        ErrorStat(cost_function),
-        TopFiveErrorStat(cost_function),
+        CostStat(cost_fn),
+        ErrorStat(cost_fn),
+        TopFiveErrorStat(cost_fn),
         ]
         stats_train_0 += [NormStat(layer) for layer in network.layers()]
         stats_train_0 += [SaturationStat(layer) for layer in network.layers()]
@@ -163,9 +184,9 @@ class Monitor:
         stats_test = [
         Counter(network, test_set_size),
         EnergyStat(network),
-        CostStat(cost_function),
-        ErrorStat(cost_function),
-        TopFiveErrorStat(cost_function),
+        CostStat(cost_fn),
+        ErrorStat(cost_fn),
+        TopFiveErrorStat(cost_fn),
         # ErrorFinder(network, evaluator),
         ]
         stats_test += [NormStat(layer) for layer in network.layers()]
@@ -173,22 +194,17 @@ class Monitor:
 
         for stat in stats_test: self._add_statistic(stat, train=False)
 
-    def _update_summary_writer(self, writer, epoch):
-        """Add the statistics to the summary writer to monitor with tensorboard
+    def _update_summary_writer(self):
+        """Add the statistics to the summary writer to monitor with tensorboard"""
 
-        Args:
-            writer (SummaryWriter): tensorboard summary writer to update
-            epoch (int): epoch of training where the statistics have been recorded
-        """
-
-        for param in self._network.params(): writer.add_histogram(param.name, param.state, epoch+1)
+        # for param in self._network.params(): self._writer.add_histogram(param.name, param.state, self._epoch)
 
         for series in self._series:
-            if series.name: writer.add_scalar(series.name, series.last_value(), epoch+1)
+            if series.name: self._writer.add_scalar(series.name, series.last_value(), self._epoch)
 
         # FIXME
         # figs = self._gdd.produce_curves()
-        # for name, fig in figs.items(): writer.add_image('GDD {}'.format(name), fig, epoch+1)
+        # for name, fig in figs.items(): self._writer.add_image('GDD {}'.format(name), fig, self._epoch)
 
 
 
@@ -272,13 +288,22 @@ class TimeSeries:
 
 class Optimizer(torch.optim.SGD):
 
-    def __init__(self, network, cost_function, learning_rates, momentum=0, weight_decay=0):
+    def __init__(self, energy_fn, cost_fn, learning_rates, momentum=0, weight_decay=0):
+        """Creates an instance of the SGD Optimizer.
+
+        Args:
+            energy_fn (SumSeparableFunction): the energy function whose parameters we optimize
+            cost_fn (CostFunction): the cost function whose parameters we optimize
+            learning_rates (list of float): the list of learning rates for the energy parameters and cost parameters
+            momentum (float, optional): the momentum. Default: 0.0
+            weight_decay (float, optional): the weight decay. Default: 0.0
+        """
 
         self._learning_rates = learning_rates
         self._momentum = momentum
         self._weight_decay = weight_decay
 
-        params = network.params() + cost_function.params()
+        params = energy_fn.params() + cost_fn.params()
         params = [{"params": param.state, "lr": lr} for param, lr in zip(params, learning_rates)]
         torch.optim.SGD.__init__(self, params, lr=0.1, momentum=momentum, weight_decay=weight_decay)
 

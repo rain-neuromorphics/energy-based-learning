@@ -1,7 +1,6 @@
 import torch
 import torchvision
 
-
 class IndexedDataset(torch.utils.data.Dataset):
     """
     Wrapper class that turns a (labeled) datadet into an `indexed dataset'.
@@ -296,7 +295,7 @@ def load_dataset(dataset, normalize=True, augment_32x32=False):
     else: raise ValueError("expected 'MNIST', 'FashionMNIST', `SVHN', `CIFAR10' or `CIFAR100' but got {}".format(dataset))
 
 
-def load_dataloaders(dataset, batch_size, augment_32x32=False):
+def load_dataloaders(dataset, batch_size, augment_32x32=False, normalize=True):
     """Builds data loaders (training and test loaders).
 
     The test loader is an IndexedDataset, meaning that it generates data in the form of triplets (x, y, idx).
@@ -305,12 +304,14 @@ def load_dataloaders(dataset, batch_size, augment_32x32=False):
         dataset (str): The dataset used for training. Either 'MNIST' or 'FashionMNIST'
         batch_size (int): size of the mini-batch
         augment_32x32 (bool, optional): if True, and if dataset is MNIST or Fashion-MNIST, augment the input images to 32x32 pixels. Default: False
+        normalize (bool, optional): raw data if False, or pre-processed (e.g. normalized) data if True. Default: True
 
     Returns:
         tuple of dataloaders: the training loader and the test loader
     """
 
-    training_data, test_data = load_dataset(dataset, augment_32x32=augment_32x32)
+    training_data, test_data = load_dataset(dataset, normalize=normalize, augment_32x32=augment_32x32)
+
     training_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True, num_workers=1)
     test_data = IndexedDataset(test_data)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=1)

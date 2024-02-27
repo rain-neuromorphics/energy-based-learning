@@ -1,4 +1,5 @@
 import sys
+import torch
 
 
 
@@ -79,9 +80,9 @@ class Evaluator(Epoch):
 
     Attributes
     ----------
-    _network (Network): the model to evaluate
+    _network (SumSeparableFunction): the model to evaluate
     _dataloader (Dataloader): the dataset on which to evaluate the model
-    max_iterations (int): maximum number of iterations allowed to converge to equilibrium at inference
+    energy_minimizer (EnergyMinimizer): the algorithm used to minimize the energy function at inference
 
     idx (tensor of int): vector of indices of the data examples in the current mini-batch
 
@@ -91,32 +92,23 @@ class Evaluator(Epoch):
         Evaluates the network over the dataset
     """
 
-    def __init__(self, network, cost_function, dataloader, max_iterations=100):
+    def __init__(self, network, cost_fn, dataloader, energy_minimizer):
         """Initializes an instance of Evaluator
 
         Args:
             network (Network): the model to evaluate
-            cost_function (CostFunction): the cost function to optimize
+            cost_fn (CostFunction): the cost function to optimize
             dataloader (Dataloader): the dataset on which to evaluate the model. An IndexedDataset that loads data in the form of triplets (x, y, idx)
-            max_iterations (int, optional): maximum number of iterations allowed to converge to equilibrium at inference. Default: 100.
+            energy_minimizer (EnergyMinimizer): the algorithm used to minimize the energy function at inference
         """
 
         Epoch.__init__(self, 1)
 
         self._network = network
-        self._cost_function = cost_function
+        self._cost_fn = cost_fn
         self._dataloader = dataloader
 
-        self._max_iterations = max_iterations
-
-    @property
-    def max_iterations(self):
-        """Gets and sets the maximum number of iterations allowed to converge to equilibrium"""
-        return self._max_iterations
-
-    @max_iterations.setter
-    def max_iterations(self, max_iterations):
-        self._max_iterations = max_iterations
+        self._energy_minimizer = energy_minimizer
 
     @property
     def idx(self):
@@ -136,12 +128,11 @@ class Evaluator(Epoch):
 
             # Inference (free phase relaxation)
             self._network.set_input(x, reset=True)
-            self._network.reset_output_force()  # FIXME: should be moved before the for loop. We do this here to handle the case where the batch_size changes between two iterations of the same epoch.
-            self._network.relaxation(self.max_iterations)
+            self._energy_minimizer.compute_equilibrium()
 
             # Measure statistics
             self._idx = idx
-            self._cost_function.set_target(y)
+            self._cost_fn.set_target(y)
             self._do_measurements()
 
             if verbose:
@@ -165,9 +156,10 @@ class Trainer(Epoch):
 
     Attributes
     ----------
-    _network (Network): the network to train
+    _network (SumSeparableFunction): the network to train
     _dataloader (Dataloader): the dataset on which to train the network
     _differentiator (GradientEstimator): the method used to train the network
+    energy_minimizer (EnergyMinimizer): the algorithm used to minimize the energy function at inference
 
     _stats (list of Statistic): _stats[0] is the list of statistics to measure after inference (evaluation), and _stats[1] is the list of statistics to measure after computing the gradient (training)
 
@@ -177,36 +169,28 @@ class Trainer(Epoch):
         Train the network for one epoch over the dataset
     """
 
-    def __init__(self, network, cost_function, dataloader, differentiator, optimizer, max_iterations=100):
+    def __init__(self, network, cost_fn, params, dataloader, differentiator, optimizer, energy_minimizer):
         """Initializes an instance of Trainer
 
         Args:
             network (Network): the network to train
-            cost_function (CostFunction): the cost function to optimize
+            cost_fn (CostFunction): the cost function to optimize
             dataloader (Dataloader): the dataset on which to train the network
-            differentiator (GradientEstimator): either Eqprop or AutoDiff
+            differentiator (GradientEstimator): either EquilibriumProp or Backprop
             optimizer (str): the optimizer used to optimize.
-            max_iterations (int, optional): maximum number of iterations allowed to converge to equilibrium at inference. Default: 100.
+            energy_minimizer (EnergyMinimizer): the algorithm used to minimize the energy function at inference
         """
 
 
         Epoch.__init__(self, 2)
 
         self._network = network
-        self._cost_function = cost_function
+        self._params = params + cost_fn.params()  # FIXME
+        self._cost_fn = cost_fn
         self._dataloader = dataloader
         self._differentiator = differentiator
         self._optimizer = optimizer
-        self._max_iterations = max_iterations
-
-    @property
-    def max_iterations(self):
-        """Gets and sets the maximum number of iterations allowed to converge to equilibrium"""
-        return self._max_iterations
-
-    @max_iterations.setter
-    def max_iterations(self, max_iterations):
-        self._max_iterations = max_iterations
+        self._energy_minimizer = energy_minimizer
 
     def run(self, verbose=False):
         """Train the model for one epoch over the dataset.
@@ -221,17 +205,16 @@ class Trainer(Epoch):
 
             # inference (free phase relaxation)
             self._network.set_input(x, reset=False)  # we set the input, and we let the state of the network where it was at the end of the previous batch
-            self._network.reset_output_force()  # we set the output force to zero, i.e. no nudging
-            self._network.relaxation(self.max_iterations)  # we let the network settle to equilibrium (free state)
-            self._cost_function.set_target(y)  # we present the correct (desired) output
+            self._energy_minimizer.compute_equilibrium()  # we let the network settle to equilibrium (free state)
+            self._cost_fn.set_target(y)  # we present the correct (desired) output
             self._do_measurements(0)  # we measure the statistics of the free state (energy value, cost value, error value, ...)
 
             # training step
-            self._cost_function.compute_gradient()  # compute the direct gradient of C (and assign the value to the .grad attribute), if C explicitly depends on parameters
-            self._differentiator.compute_gradient()  # compute the gradient of C through the free state (and assign the value to the .grad attribute)
+            grads = self._differentiator.compute_gradient()  # compute the parameter gradients
+            for param, grad in zip(self._params, grads): param.state.grad = grad  # Set the gradients of the parameters
             self._do_measurements(1)  # measure the statistics of training
             self._optimizer.step()  # perform one step of gradient descent on the parameters (of both the energy function E and the cost function C)
-            for param in self._network.params(): param.clamp_()  # clamp the parameters' states in their range of permissible values, if adequate
+            for param in self._params: param.clamp_()  # clamp the parameters' states in their range of permissible values, if adequate
 
             if verbose:  # log the characteristics of training for the current epoch, up to the current mini-batch
                 sys.stdout.write('\r')
