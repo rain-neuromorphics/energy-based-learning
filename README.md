@@ -9,8 +9,8 @@ This repository aims at developing code for simulating energy-based neuromorphic
 
 First, download the code and navigate to the project directory:
 ``` bash
-git clone https://github.com/rain-neuromorphics/energy-based-framework
-cd energy-based-framework
+git clone https://github.com/rain-neuromorphics/energy-based-learning
+cd energy-based-learning
 ```
 You will need to install PyTorch, Torchvision and TensorBoard.
 You will also need to export the path to the main directory:
