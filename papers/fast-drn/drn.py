@@ -12,7 +12,7 @@ from training.epoch import Trainer, Evaluator
 from training.monitor import Monitor, Optimizer
 
 parser = argparse.ArgumentParser(description='Deep Resistive Networks')
-parser.add_argument('--model', type = str, default = 'drn-1h', help="The DRN architecture: either 'drn-1h', 'drn-2h', 'drn-3h' or 'drn-xl'")
+parser.add_argument('--model', type = str, default = 'drn-1h', help="The DRN architecture: either 'drn-1h', 'drn-2h', 'drn-3h', 'drn-xs' or 'drn-xl'")
 parser.add_argument('--algorithm', type = str, default = 'EP', help="The algorithm used to train the network: equilibrium propagation (EP) or backpropagation (BP)")
 
 args = parser.parse_args()
@@ -20,12 +20,34 @@ args = parser.parse_args()
 
 
 if __name__ == "__main__":
+    
+    # Expected results
+    # DRN-XS EP: 3.46% test error and 2.94% train error (0 hours 30 minutes)
+    # DRN-XS BP: 3.30% test error and 2.62% train error (0 hours 32 minutes)
+    # DRN-XL EP: 1.33% test error and 0.02% train error (10 hours 27 minutes)
+    # DRN-XL BP: 1.30% test error and 0.01% train error (8 hours 19 minutes)
+    # DRN-1H EP: 1.57% test error and 0.12% train error (2 hours 36 minutes)
+    # DRN-1H BP: 1.54% test error and 0.12% train error (2 hours 48 minutes)
+    # DRN-2H EP: 1.48% test error and 0.25% train error (4 hours 29 minutes)
+    # DRN-2H BP: 1.45% test error and 0.22% train error (4 hours 53 minutes)
+    # DRN-3H EP: 1.66% test error and 0.46% train error (6 hours 57 minutes)
+    # DRN-3H BP: 1.50% test error and 0.33% train error (7 hours 55 minutes)
 
     model = args.model
     algorithm = args.algorithm
 
     # Hyperparameters
-    if model == 'drn-xl':
+    if model == 'drn-xs':
+        layer_shapes = [(2, 28, 28), (100,), (10,)]
+        weight_gains = [1.0, 1.0]
+        input_gain = 100.
+        num_iterations_inference = 4
+        num_iterations_training = 4
+        nudging = 1.0
+        learning_rates_weights = [0.006, 0.006]
+        learning_rates_biases = [0.006, 0.006]
+        num_epochs = 10
+    elif model == 'drn-xl':
         layer_shapes = [(2, 28, 28), (32768,), (10,)]
         weight_gains = [1.0, 1.0]
         input_gain = 800.
@@ -34,6 +56,7 @@ if __name__ == "__main__":
         nudging = 1.0
         learning_rates_weights = [0.006, 0.006]
         learning_rates_biases = [0.006, 0.006]
+        num_epochs = 100
     elif model == 'drn-1h':
         layer_shapes = [(2, 28, 28), (1024,), (10,)]
         weight_gains = [1.0, 1.0]
@@ -43,6 +66,7 @@ if __name__ == "__main__":
         nudging = 1.0
         learning_rates_weights = [0.006, 0.006]
         learning_rates_biases = [0.006, 0.006]
+        num_epochs = 50
     elif model == 'drn-2h':
         layer_shapes = [(2, 28, 28), (1024,), (1024,), (10,)]
         weight_gains = [1.0, 1.0, 1.0]
@@ -52,6 +76,7 @@ if __name__ == "__main__":
         nudging = 1.0
         learning_rates_weights = [0.002, 0.006, 0.018]
         learning_rates_biases = [0.002, 0.006, 0.018]
+        num_epochs = 50
     elif model == 'drn-3h':
         layer_shapes = [(2, 28, 28), (1024,), (1024,), (1024,), (10,)]
         weight_gains = [1.0, 1.0, 1.0, 1.0]
@@ -61,6 +86,7 @@ if __name__ == "__main__":
         nudging = 2.0
         learning_rates_weights = [0.005, 0.02, 0.08, 0.005]
         learning_rates_biases = [0.0005, 0.002, 0.008, 0.0005]
+        num_epochs = 50
     else:
         raise ValueError("expected 'drn-1h', 'drn-2h', 'drn-3h' or 'drn-xl' but got {}".format(model))
 
@@ -118,11 +144,10 @@ if __name__ == "__main__":
     evaluator = Evaluator(network, cost_fn, test_loader, energy_minimizer_inference)
     
     # Define the scheduler for the learning rates
-    num_epochs = 50
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
 
     # Define the path and the monitor to perform the run
-    path = '/'.join(['papers/fast-drn', dataset])
+    path = '/'.join(['papers/fast-drn', model, algorithm])
     monitor = Monitor(energy_fn, cost_fn, trainer, scheduler, evaluator, path)
 
     # Print the characteristics of the run

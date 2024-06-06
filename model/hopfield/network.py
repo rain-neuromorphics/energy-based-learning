@@ -122,6 +122,7 @@ class DeepHopfieldEnergy(SumSeparableFunction):
         return 'Deep Hopfield Network -- layer shapes={}, weight gains={}'.format(self._layer_shapes, self._weight_gains)
 
 
+
 class ConvHopfieldEnergy28(SumSeparableFunction):
     """Energy function of a convolutional Hopfield network (CHN) with 28x28 pixel input images
 
@@ -181,31 +182,6 @@ class ConvHopfieldEnergy28(SumSeparableFunction):
     def __str__(self):
         return 'ConvHopfieldEnergy28 -- size={}, activation={}, pooling={}, gains={}'.format(self._size, self._activation, self._pool_type, self._weight_gains)
 
-
-'''if dataset == 'CIFAR10' and architecture == 'conv_avg':  # convolutional network
-hparams = {
-'layer_shapes': [(3, 32, 32), (32, 15, 15), (64, 6, 6), (128, 2, 2), (10,)],
-'activations': ['linear', 'hard-sigmoid', 'hard-sigmoid', 'hard-sigmoid', 'linear'],
-'bias_shapes': [(32,), (64,), (128,), None],
-'edges': [(0, 1), (1, 2), (2, 3), (3, 4)],
-'weight_shapes': [(32, 3, 3, 3), (64, 32, 4, 4), (128, 64, 3, 3), (128, 2, 2, 10)],
-'weight_types': ['conv_avg_pool', 'conv_avg_pool', 'conv_avg_pool', 'dense'],
-'paddings': [0, 0, 0, None],
-'weight_gains': [0.6, 0.6, 1.4, 1.5],
-'max_iterations_inference': 100,
-'max_iterations_training': 100,
-'variant': 'centered',
-'constant_force': True,
-'nudging': 0.5,
-'learning_rates_weights': [0.2, 0.1, 0.05, 0.03],
-'learning_rates_biases': [0.2, 0.1, 0.05, 0.03],
-'momentum': 0,
-'weight_decay': 0,
-'num_epochs': 200,
-'lr_decay': 0.99,
-'batch_size': 128,
-}
-'''
 
 
 class ConvHopfieldEnergy32(SumSeparableFunction):
