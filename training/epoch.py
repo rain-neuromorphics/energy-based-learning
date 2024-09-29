@@ -175,6 +175,7 @@ class Trainer(Epoch):
         Args:
             network (Network): the network to train
             cost_fn (CostFunction): the cost function to optimize
+            params (list of Parameters): the energy function parameters whose gradients we estimate 
             dataloader (Dataloader): the dataset on which to train the network
             differentiator (GradientEstimator): either EquilibriumProp or Backprop
             optimizer (str): the optimizer used to optimize.
