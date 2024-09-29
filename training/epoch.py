@@ -169,13 +169,12 @@ class Trainer(Epoch):
         Train the network for one epoch over the dataset
     """
 
-    def __init__(self, network, cost_fn, params, dataloader, differentiator, optimizer, energy_minimizer):
+    def __init__(self, network, cost_fn, dataloader, differentiator, optimizer, energy_minimizer):
         """Initializes an instance of Trainer
 
         Args:
             network (Network): the network to train
             cost_fn (CostFunction): the cost function to optimize
-            params (list of Parameters): the energy function parameters whose gradients we estimate 
             dataloader (Dataloader): the dataset on which to train the network
             differentiator (GradientEstimator): either EquilibriumProp or Backprop
             optimizer (str): the optimizer used to optimize.
@@ -186,7 +185,7 @@ class Trainer(Epoch):
         Epoch.__init__(self, 2)
 
         self._network = network
-        self._params = params + cost_fn.params()  # FIXME
+        self._params = network._params + cost_fn.params()
         self._cost_fn = cost_fn
         self._dataloader = dataloader
         self._differentiator = differentiator
