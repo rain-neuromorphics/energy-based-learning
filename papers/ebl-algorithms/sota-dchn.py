@@ -85,7 +85,7 @@ if __name__ == "__main__":
     energy_minimizer_inference.num_iterations = num_iterations_inference
 
     # Define the trainer (to perform one epoch of training) and the evaluator (to evaluate the model on the test set)
-    trainer = Trainer(network, cost_fn, params, training_loader, estimator, optimizer, energy_minimizer_inference)
+    trainer = Trainer(network, cost_fn, training_loader, estimator, optimizer, energy_minimizer_inference)
     evaluator = Evaluator(network, cost_fn, test_loader, energy_minimizer_inference)
     
     # Define the scheduler for the learning rates (cosine annealing scheduler)
