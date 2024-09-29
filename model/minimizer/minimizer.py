@@ -110,8 +110,6 @@ class Minimizer:
         Runs one step of the minimization process
     """
 
-    # TODO: remove the step() method and restructure the minimization process
-
     def __init__(self, fn, updaters, num_iterations=15, mode='asynchronous'):
         """Creates an instance of Minimizer
 
@@ -160,8 +158,7 @@ class Minimizer:
             layers: dictionary of Tensors. The state of the layers at equilibrium
         """
 
-        for layer_group in self._list_layers: self.step(layer_group)
-        # for _ in range(self._num_iterations): self.step()
+        for _ in range(self._num_iterations): self.step()
 
         layers = {layer.name: layer.state for layer in self._layers}
 
@@ -179,40 +176,39 @@ class Minimizer:
         for layer in self._layers: trajectories[layer.name] = [layer.state]
         for param in self._params: trajectories[param.name] = [param.state]
         
-        # for _ in range(self._num_iterations):
-        for layer_group in self._list_layers:
+        for _ in range(self._num_iterations):
             for param in self._params:
                 # at each time step of the minimization process, we create a new parameter tensor,
                 # this is useful to compute the partial derivative of the loss wrt the parameter at this time step in the backward pass of the backpropagation algorithm
                 param.state = param.state + torch.zeros_like(param.state)
                 trajectories[param.name].append(param.state)
             # perform one step of the layers' dynamics and store the layers' activations
-            self.step(layer_group)
+            self.step()
             for layer in self._layers:
                 trajectories[layer.name].append(layer.state)
         
         return trajectories
 
-    def step(self, layer_group):
+    def step(self):
         """Runs one step of the equilibration process"""
         
-        # for layer_group in self._list_layers:
-        pre_activations = [updater.pre_activate() for updater in layer_group]
-        for updater, pre_activation in zip(layer_group, pre_activations):
-            updater._layer.state = pre_activation  # FIXME
-            updater._layer.state = updater._layer.activate()  # FIXME
+        for layer_group in self._list_layers:
+            pre_activations = [updater.pre_activate() for updater in layer_group]
+            for updater, pre_activation in zip(layer_group, pre_activations):
+                updater._layer.state = pre_activation
+                updater._layer.state = updater._layer.activate()
     
     def _set_mode(self):
         """Set the order of the layers to update at each 'step', depending on the 'mode' attribute"""
         mode = self._mode
         if mode == 'forward':
-            self._list_layers = [[updater] for updater in self._updaters] * self._num_iterations
+            self._list_layers = [[updater] for updater in self._updaters]
         elif mode == 'backward':
-            self._list_layers = [[updater] for updater in reversed(self._updaters)] * self._num_iterations
+            self._list_layers = [[updater] for updater in reversed(self._updaters)]
         elif mode == 'synchronous':
-            self._list_layers = [self._updaters] * self._num_iterations
+            self._list_layers = [self._updaters]
         elif mode == 'asynchronous':
-            self._list_layers = [self._updaters[::2], self._updaters[1::2]] * self._num_iterations
+            self._list_layers = [self._updaters[::2], self._updaters[1::2]]
         else:
             raise ValueError("expected 'forward', 'backward', 'synchronous' or 'asynchronous' but got {}".format(mode))
 

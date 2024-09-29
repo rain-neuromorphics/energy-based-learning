@@ -88,7 +88,7 @@ if __name__ == "__main__":
         learning_rates_biases = [0.0005, 0.002, 0.008, 0.0005]
         num_epochs = 50
     else:
-        raise ValueError("expected 'drn-1h', 'drn-2h', 'drn-3h' or 'drn-xl' but got {}".format(model))
+        raise ValueError("expected 'drn-1h', 'drn-2h', 'drn-3h', 'drn-xs' or 'drn-xl' but got {}".format(model))
 
     # Load the training and test data (MNIST)
     dataset = 'MNIST'
