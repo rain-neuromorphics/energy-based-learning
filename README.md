@@ -1,8 +1,9 @@
 # Energy-Based Learning Framework
 
-This repository aims at developing code for simulating energy-based neuromorphic platforms and the training of such platforms using learning algorithms like equilibrium propagation. In particular, this repository contains the code to reproduce the results of the following papers:
+This repository aims at developing code for simulating energy-based systems and the training process of such systems using learning algorithms like equilibrium propagation. In particular, this repository contains the code to reproduce the results of the following papers:
 - [Energy-based learning algorithms for analog computing: a comparative study](papers/ebl-algorithms/README.md)
 - [A fast algorithm to simulate nonlinear resistive networks](papers/fast-drn/README.md)
+- [A universal approximation theorem for nonlinear resistive networks](papers/universal-drn/README.md)
 
 
 ## Prerequisites

@@ -77,8 +77,54 @@ def load_mnist(normalize=False, augment_32x32=False):
     return training_data, test_data
 
 
+def load_kuzushiji_mnist(normalize=False, augment_32x32=False):
+    """Loads the Kuzushiji-MNIST (K-MNIST) dataset (training and test sets).
+
+    Args:
+        normalize (bool, optional): Whether to normalize the data or not. Default is False.
+        augment_32x32 (bool, optional): Whether data images are augmented to 32x32 pixels, or left to 28x28 pixels. Default is False.
+
+    Returns:
+        tuple of datasets: the training dataset and the test dataset
+    """
+    
+    training_transforms = list()
+    test_transforms = list()
+
+    if augment_32x32:
+        training_transforms.append(torchvision.transforms.Pad(padding=(2, 2, 2, 2), fill=0))  # Add 2 pixels of padding on each side
+        training_transforms.append(torchvision.transforms.RandomCrop(size=[32,32], padding=2, padding_mode='edge'))
+
+        test_transforms.append(torchvision.transforms.Pad(padding=(2, 2, 2, 2), fill=0))  # Add 2 pixels of padding on each side
+    
+    training_transforms.append(torchvision.transforms.ToTensor())
+    test_transforms.append(torchvision.transforms.ToTensor())
+
+    if normalize:
+        mean = (0.1307,)  # FIXME These values must be changed. These are the values of the MNIST dataset
+        std = (0.3081,)
+        training_transforms.append(torchvision.transforms.Normalize(mean, std))
+        test_transforms.append(torchvision.transforms.Normalize(mean, std))
+
+    training_data = torchvision.datasets.KMNIST(
+        root="data",
+        train=True,
+        download=True,
+        transform=torchvision.transforms.Compose(training_transforms),
+    )
+
+    test_data = torchvision.datasets.KMNIST(
+        root="data",
+        train=False,
+        download=True,
+        transform=torchvision.transforms.Compose(test_transforms),
+    )
+
+    return training_data, test_data
+
+
 def load_fashion_mnist(normalize=True, augment_32x32=False):
-    """Loads the FashionMNIST dataset (training and test sets).
+    """Loads the Fashion-MNIST (F-MNIST) dataset (training and test sets).
 
     Args:
         normalize (bool, optional): Whether to normalize the data or not. Default is True.
@@ -279,7 +325,7 @@ def load_dataset(dataset, normalize=True, augment_32x32=False):
     """Loads the dataset (training and test sets).
 
     Args:
-        dataset (str): The dataset used for training. Either 'MNIST', 'FashionMNIST', 'CIFAR10' or 'CIFAR100'.
+        dataset (str): The dataset used for training. Either 'MNIST', 'KuzushijiMNIST', 'FashionMNIST', 'SVHN', 'CIFAR10' or 'CIFAR100'.
         normalize (bool, optional): raw data if False, or pre-processed (e.g. normalized) data if True. Default: True
         augment_32x32 (bool, optional): if True, and if dataset is MNIST or Fashion-MNIST, augment the input images to 32x32 pixels. Default: False
 
@@ -288,11 +334,12 @@ def load_dataset(dataset, normalize=True, augment_32x32=False):
     """
 
     if dataset == 'MNIST': return load_mnist(normalize, augment_32x32)
+    elif dataset == 'KuzushijiMNIST': return load_kuzushiji_mnist(normalize, augment_32x32)
     elif dataset == 'FashionMNIST': return load_fashion_mnist(normalize, augment_32x32)
     elif dataset == 'SVHN': return load_svhn(normalize)
     elif dataset == 'CIFAR10': return load_cifar10(normalize)
     elif dataset == 'CIFAR100': return load_cifar100(normalize)
-    else: raise ValueError("expected 'MNIST', 'FashionMNIST', `SVHN', `CIFAR10' or `CIFAR100' but got {}".format(dataset))
+    else: raise ValueError("expected 'MNIST', 'KuzushijiMNIST', 'FashionMNIST', 'SVHN', 'CIFAR10' or 'CIFAR100' but got {}".format(dataset))
 
 
 def load_dataloaders(dataset, batch_size, augment_32x32=False, normalize=True):
@@ -301,9 +348,9 @@ def load_dataloaders(dataset, batch_size, augment_32x32=False, normalize=True):
     The test loader is an IndexedDataset, meaning that it generates data in the form of triplets (x, y, idx).
 
     Args:
-        dataset (str): The dataset used for training. Either 'MNIST' or 'FashionMNIST'
+        dataset (str): The dataset used for training.
         batch_size (int): size of the mini-batch
-        augment_32x32 (bool, optional): if True, and if dataset is MNIST or Fashion-MNIST, augment the input images to 32x32 pixels. Default: False
+        augment_32x32 (bool, optional): if True, and if dataset is MNIST, Kuzushiji-MNIST or Fashion-MNIST, augment the input images to 32x32 pixels. Default: False
         normalize (bool, optional): raw data if False, or pre-processed (e.g. normalized) data if True. Default: True
 
     Returns:
