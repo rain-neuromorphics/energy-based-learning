@@ -49,10 +49,11 @@ class CostFunction(ABC):
         Args:
             label: Tensor of shape (batch size,) and type int. Labels associated to the inputs in the batch.
         """
-
-        # TODO: check that the batch_size of the labels is the same as that of the output layer
-
         output = self._get_output()  # the output layer's state
+
+        if label.size()[0] != output.size()[0]:
+            raise ValueError(f"Batch size mismatch. Expected {output.size()[0]}, got {label.size()[0]}")
+    
         device = output.device  # device on which the output layer Tensor is, and on which we put the layer and target Tensors
         self._label = label.to(device)
         self._target = F.one_hot(self._label, num_classes=self._num_classes).type(torch.float32)  # convert the label into its one-hot code

@@ -40,8 +40,8 @@ class Monitor:
             network (SumSeparableFunction): the network to train
             cost_fn (CostFunction): the cost function to optimize
             trainer (Trainer): used to train the network on the training set
-            evaluator (Evaluator): used to evaluate the network on the test set
             scheduler (lr_scheduler): used to adjust the learning rates after every training epoch
+            evaluator (Evaluator): used to evaluate the network on the test set
             path (str, optional): the directory where to save the model and the characteristics of the training process. Default: None
             use_tensorboard (bool, optional): if True, uses a summary writer to monitor with tensorboard. Default: True
         """

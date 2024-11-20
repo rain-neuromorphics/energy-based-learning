@@ -104,7 +104,7 @@ if __name__ == "__main__":
     energy_minimizer_inference.num_iterations = num_iterations_inference
     energy_minimizer_inference.mode = 'asynchronous'
 
-    trainer = Trainer(network, cost_fn, params, training_loader, estimator, optimizer, energy_minimizer_inference)
+    trainer = Trainer(network, cost_fn, training_loader, estimator, optimizer, energy_minimizer_inference)
     evaluator = Evaluator(network, cost_fn, test_loader, energy_minimizer_inference)
     
     # Define the scheduler for the learning rates

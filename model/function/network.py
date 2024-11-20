@@ -33,6 +33,8 @@ class Network():
 
         self._free_layers = function.layers()[1:]
 
+        self._params = function.params()
+        
     def free_layers(self):
         """Return the list of free layers"""
         return self._free_layers

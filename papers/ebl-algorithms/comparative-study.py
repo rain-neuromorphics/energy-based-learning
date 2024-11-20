@@ -134,13 +134,11 @@ if __name__ == "__main__":
     optimizer = Optimizer(energy_fn, cost_fn, learning_rates, momentum, weight_decay)
 
     # Define the trainer (to perform one epoch of training) and the evaluator (to evaluate the model on the test set)
-    params = energy_fn.params()
-    layers = energy_fn.layers()
     free_layers = network.free_layers()
     num_iterations_inference = 60
     energy_minimizer_inference = FixedPointMinimizer(energy_fn, free_layers)
     energy_minimizer_inference.num_iterations = num_iterations_inference
-    trainer = Trainer(network, cost_fn, params, training_loader, estimator, optimizer, energy_minimizer_inference)
+    trainer = Trainer(network, cost_fn, training_loader, estimator, optimizer, energy_minimizer_inference)
     evaluator = Evaluator(network, cost_fn, test_loader, energy_minimizer_inference)
     
     # Define the scheduler for the learning rates (cosine annealing scheduler)
