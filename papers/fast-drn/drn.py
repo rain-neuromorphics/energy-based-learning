@@ -88,7 +88,7 @@ if __name__ == "__main__":
         learning_rates_biases = [0.0005, 0.002, 0.008, 0.0005]
         num_epochs = 50
     else:
-        raise ValueError("expected 'drn-1h', 'drn-2h', 'drn-3h' or 'drn-xl' but got {}".format(model))
+        raise ValueError("expected 'drn-1h', 'drn-2h', 'drn-3h', 'drn-xs' or 'drn-xl' but got {}".format(model))
 
     # Load the training and test data (MNIST)
     dataset = 'MNIST'
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     energy_minimizer_inference.num_iterations = num_iterations_inference
     energy_minimizer_inference.mode = 'asynchronous'
 
-    trainer = Trainer(network, cost_fn, params, training_loader, estimator, optimizer, energy_minimizer_inference)
+    trainer = Trainer(network, cost_fn, training_loader, estimator, optimizer, energy_minimizer_inference)
     evaluator = Evaluator(network, cost_fn, test_loader, energy_minimizer_inference)
     
     # Define the scheduler for the learning rates
